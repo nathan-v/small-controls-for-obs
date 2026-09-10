@@ -1,0 +1,74 @@
+name: Test
+on:
+  workflow_call:
+jobs:
+  ubuntu-tests:
+    name: Test (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies 🛍️
+        run: |
+          : Install Dependencies 🛍️
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+          sudo add-apt-repository --yes ppa:obsproject/obs-studio
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config ccache \
+            libgles2-mesa-dev libsimde-dev obs-studio \
+            qt6-base-dev qt6-base-private-dev fonts-dejavu-core
+
+      - name: Configure 🔧
+        run: cmake --preset ubuntu-ci-x86_64 -DENABLE_TESTS=ON
+
+      - name: Build 🧱
+        run: cmake --build --preset ubuntu-ci-x86_64 --target small-controls-tests
+
+      - name: Test 🧪
+        run: ctest --test-dir build_x86_64 --output-on-failure
+
+  macos-tests:
+    name: Test (macos-15)
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: zsh --no-rcs --errexit --pipefail {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up Environment 🔧
+        run: |
+          : Set Up Environment 🔧
+          if (( ${+RUNNER_DEBUG} )) setopt XTRACE
+          sudo xcode-select --switch /Applications/Xcode_16.1.0.app/Contents/Developer
+
+      - name: Configure 🔧
+        run: cmake --preset macos-ci -DENABLE_TESTS=ON
+
+      - name: Build 🧱
+        run: cmake --build build_macos --config RelWithDebInfo --target small-controls-tests --parallel
+
+      - name: Test 🧪
+        run: ctest --test-dir build_macos -C RelWithDebInfo --output-on-failure
+
+  windows-tests:
+    name: Test (windows-2022)
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure 🔧
+        run: cmake --preset windows-ci-x64 -DENABLE_TESTS=ON
+
+      - name: Build 🧱
+        run: cmake --build build_x64 --config RelWithDebInfo --target small-controls-tests --parallel
+
+      - name: Test 🧪
+        run: ctest --test-dir build_x64 -C RelWithDebInfo --output-on-failure
